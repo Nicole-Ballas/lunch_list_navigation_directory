@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunch Nearby</title>
+<!-- Overpass: a typeface derived from U.S. Highway Gothic signage lettering — fits the wayfinding theme -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sign-green: #14563f;
+    --sign-green-deep: #0d3f2e;
+    --paper: #f2efe8;
+    --ink: #1c1c1a;
+    --line: #d8d3c6;
+    --white: #ffffff;
+    --accent: #f5c542; /* signage yellow, used sparingly */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Overpass', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---- Header styled as a highway sign ---- */
+  header {
+    background: var(--sign-green);
+    color: var(--white);
+    padding: 28px 20px 22px;
+    border-bottom: 6px solid var(--sign-green-deep);
+  }
+  .header-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    border: 3px solid var(--white);
+    border-radius: 14px;
+    padding: 18px 20px 14px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 4px;
+  }
+  h1 {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    margin-top: 8px;
+    font-size: 14px;
+    opacity: 0.85;
+  }
+
+  /* ---- List ---- */
+  main {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 18px 14px 60px;
+  }
+
+  .spot {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .spot-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+  }
+  .spot-main:active { background: #faf8f2; }
+  .spot-main:focus-visible {
+    outline: 3px solid var(--sign-green);
+    outline-offset: -3px;
+    border-radius: 12px;
+  }
+
+  .spot-info { flex: 1; min-width: 0; }
+  .spot-name {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .spot-meta {
+    margin-top: 3px;
+    font-size: 13px;
+    color: #6b6a63;
+  }
+  .spot-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sign-green);
+    margin-top: 5px;
+  }
+
+  /* The arrow chevron — the "exit sign" cue */
+  .go {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--sign-green);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  /* ---- iOS map choice row (revealed on tap) ---- */
+  .map-choice {
+    display: none;
+    border-top: 1px solid var(--line);
+    background: #faf8f2;
+  }
+  .map-choice.open { display: flex; }
+  .map-choice a {
+    flex: 1;
+    padding: 14px 10px;
+    text-align: center;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--sign-green);
+  }
+  .map-choice a:first-child { border-right: 1px solid var(--line); }
+  .map-choice a:active { background: #f0ece1; }
+
+  footer {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    font-size: 12px;
+    color: #8a887f;
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .spot { transition: transform 0.08s ease; }
+    .spot:has(.spot-main:active) { transform: scale(0.99); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="eyebrow">Next exit</div>
+    <h1>Lunch Nearby</h1>
+    <div class="sub">Tap a spot to get walking directions.</div>
+  </div>
+</header>
+
+<main id="list"></main>
+
+<footer>Scan · tap · eat. Directions open in your maps app.</footer>
+
+<script>
+/* ============================================================
+   EDIT THIS LIST — that's the whole job.
+   name:    what shows on the page
+   address: full street address (used for the map search)
+   meta:    short line under the name (walk time, price, etc.)
+   tag:     optional cuisine/category label
+   ============================================================ */
+const SPOTS = [
+  { name: "Sample Sandwich Co.",  address: "123 Main St, Redmond, WA 98052", meta: "4 min walk · $",  tag: "Sandwiches" },
+  { name: "Placeholder Pho",      address: "456 Cleveland St, Redmond, WA 98052", meta: "6 min walk · $$", tag: "Vietnamese" },
+  { name: "Example Tacos",        address: "789 Bear Creek Pkwy, Redmond, WA 98052", meta: "8 min walk · $", tag: "Mexican" },
+  { name: "Demo Poke Bowl",       address: "16150 NE 85th St, Redmond, WA 98052", meta: "10 min walk · $$", tag: "Hawaiian" },
+];
+
+/* ---- Platform detection ---- */
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); // iPadOS
+
+function query(spot) {
+  return encodeURIComponent(spot.name + " " + spot.address);
+}
+function geoUrl(spot)    { return "geo:0,0?q=" + query(spot); }                                   // Android: native app picker
+function appleUrl(spot)  { return "https://maps.apple.com/?q=" + query(spot); }                   // iOS: Apple Maps
+function googleUrl(spot) { return "https://www.google.com/maps/search/?api=1&query=" + query(spot); } // Universal Google Maps
+
+/* ---- Render ---- */
+const list = document.getElementById("list");
+
+SPOTS.forEach((spot, i) => {
+  const card = document.createElement("div");
+  card.className = "spot";
+
+  const btn = document.createElement("button");
+  btn.className = "spot-main";
+  btn.setAttribute("aria-label", "Directions to " + spot.name);
+  btn.innerHTML =
+    '<div class="spot-info">' +
+      '<div class="spot-name"></div>' +
+      (spot.meta ? '<div class="spot-meta"></div>' : '') +
+      (spot.tag ? '<span class="spot-tag"></span>' : '') +
+    '</div>' +
+    '<div class="go" aria-hidden="true">&rarr;</div>';
+  btn.querySelector(".spot-name").textContent = spot.name;
+  if (spot.meta) btn.querySelector(".spot-meta").textContent = spot.meta;
+  if (spot.tag)  btn.querySelector(".spot-tag").textContent = spot.tag;
+  card.appendChild(btn);
+
+  if (isIOS) {
+    // iOS: reveal a two-button choice (Apple Maps / Google Maps)
+    const choice = document.createElement("div");
+    choice.className = "map-choice";
+    choice.id = "choice-" + i;
+
+    const apple = document.createElement("a");
+    apple.href = appleUrl(spot);
+    apple.textContent = "\uF8FF Apple Maps"; // renders as  on Apple devices
+    const goog = document.createElement("a");
+    goog.href = googleUrl(spot);
+    goog.textContent = "Google Maps";
+
+    choice.appendChild(apple);
+    choice.appendChild(goog);
+    card.appendChild(choice);
+
+    btn.setAttribute("aria-expanded", "false");
+    btn.addEventListener("click", () => {
+      // Close any other open row, then toggle this one
+      document.querySelectorAll(".map-choice.open").forEach(el => {
+        if (el !== choice) el.classList.remove("open");
+      });
+      const open = choice.classList.toggle("open");
+      btn.setAttribute("aria-expanded", String(open));
+    });
+  } else {
+    // Android: geo: URI triggers the system app chooser.
+    // Desktop / anything without a geo: handler falls back to Google Maps.
+    btn.addEventListener("click", () => {
+      if (/Android/i.test(navigator.userAgent)) {
+        window.location.href = geoUrl(spot);
+      } else {
+        window.open(googleUrl(spot), "_blank", "noopener");
+      }
+    });
+  }
+
+  list.appendChild(card);
+});
+</script>
+
+</body>
+</html>
